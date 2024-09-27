@@ -1,0 +1,54 @@
+---
+- name   : playbook install nginx Debian 12 port 8080
+  hosts  : testdeb1
+  become : yes
+  vars:
+    nginx_listen_port: 8080
+
+  tasks  :
+    - name: copy sources.list
+      copy:
+        src   : /ansible/files/all/etc/apt/sources.list
+        dest  : /etc/apt/sources.list
+        owner : root
+        group : root
+        mode  : '0644'
+        backup: yes
+
+    - name: Update repositories cache and apt
+      ansible.builtin.apt:
+        update_cache: yes
+      tags: 
+        -update apt
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: latest
+      notify: 
+        -restart nginx
+      tags: 
+        -nginx-package
+
+    - name: Nginx create config file from template
+      ansible.builtin.template:
+        src: /ansible/templates/default.j2
+        dest: /etc/nginx/sites-available/default
+        backup: true
+      notify:
+        - reload nginx
+      tags:
+        - nginx-configuration
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        unit: nginx
+        state: restarted
+        enabled: yes
+
+    - name: reload nginx
+      systemd:
+        unit: nginx
+        state: reloaded
+...
